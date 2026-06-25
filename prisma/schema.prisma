@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  JOB_SEEKER
+  EMPLOYER
+  ADMIN
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
+  FLAGGED
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWED
+  INTERVIEW
+  ACCEPTED
+  REJECTED
+}
+
+model User {
+  id             String         @id @default(cuid())
+  name           String
+  email          String         @unique
+  password       String
+  role           Role           @default(JOB_SEEKER)
+  phone          String?
+  location       String?
+  profilePicture String?
+  resumeUrl      String?
+  isBanned       Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  company        Company?
+  applications   Application[]
+  savedJobs      SavedJob[]
+  notifications  Notification[]
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  ownerId     String   @unique
+  companyName String
+  website     String?
+  description String?
+  logo        String?
+  industry    String?
+  employees   String?
+  location    String?
+  isVerified  Boolean  @default(false)
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  jobs        Job[]
+  createdAt   DateTime @default(now())
+}
+
+model Job {
+  id               String        @id @default(cuid())
+  companyId        String
+  title            String
+  description      String
+  salary           String?
+  experience       String?
+  employmentType   EmploymentType
+  workMode         WorkMode
+  location         String
+  categoryId       String?
+  responsibilities String
+  skills           String[]
+  education        String?
+  benefits         String[]
+  deadline         DateTime
+  vacancies        Int           @default(1)
+  tags             String[]
+  status           JobStatus     @default(OPEN)
+  views            Int           @default(0)
+  createdAt        DateTime      @default(now())
+  company          Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category         Category?     @relation(fields: [categoryId], references: [id])
+  applications     Application[]
+  savedJobs        SavedJob[]
+}
+
+model Application {
+  id          String            @id @default(cuid())
+  jobId       String
+  userId      String
+  resume      String
+  coverLetter String?
+  status      ApplicationStatus @default(PENDING)
+  appliedAt   DateTime          @default(now())
+  job         Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SavedJob {
+  id        String   @id @default(cuid())
+  userId    String
+  jobId     String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+}
+
+model Category {
+  id   String @id @default(cuid())
+  name String @unique
+  jobs Job[]
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

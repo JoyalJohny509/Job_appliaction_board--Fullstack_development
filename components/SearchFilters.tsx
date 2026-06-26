@@ -1,10 +1,12 @@
 import { Search } from "lucide-react";
-import { categories, employmentTypes, workModes } from "@/lib/data";
+import { WORK_MODE_OPTIONS, EMPLOYMENT_TYPE_OPTIONS } from "@/lib/enum-labels";
 
 export function SearchFilters({
-  defaults
+  defaults,
+  categories
 }: {
   defaults: Record<string, string | string[] | undefined>;
+  categories: { id: string; name: string }[];
 }) {
   const value = (key: string) => {
     const input = defaults[key];
@@ -42,17 +44,17 @@ export function SearchFilters({
       <div className="grid gap-3 border-t border-line pt-3 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-5">
         <select name="workMode" defaultValue={value("workMode")} className="field">
           <option value="">Any work mode</option>
-          {workModes.map((mode) => (
-            <option key={mode} value={mode}>
-              {mode}
+          {WORK_MODE_OPTIONS.map(([val, label]) => (
+            <option key={val} value={label}>
+              {label}
             </option>
           ))}
         </select>
         <select name="employmentType" defaultValue={value("employmentType")} className="field">
           <option value="">Any employment</option>
-          {employmentTypes.map((type) => (
-            <option key={type} value={type}>
-              {type}
+          {EMPLOYMENT_TYPE_OPTIONS.map(([val, label]) => (
+            <option key={val} value={label}>
+              {label}
             </option>
           ))}
         </select>

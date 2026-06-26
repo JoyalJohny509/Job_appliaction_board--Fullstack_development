@@ -1,25 +1,16 @@
 import Link from "next/link";
 import { SearchFilters } from "@/components/SearchFilters";
 import { JobCard } from "@/components/JobCard";
-import { listJobs } from "@/lib/data";
-import { EmploymentType, Job, JobFilters, WorkMode } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
+import * as jobService from "@/lib/services/job.service";
+import * as categoryService from "@/lib/services/category.service";
+import { parseWorkMode, parseEmploymentType } from "@/lib/enum-labels";
+import { WorkMode, EmploymentType } from "@prisma/client";
+import type { JobFilters } from "@/lib/types";
 
 function value(input: string | string[] | undefined) {
   return Array.isArray(input) ? input[0] : input;
-}
-
-function asWorkMode(input?: string): WorkMode | undefined {
-  return input === "Remote" || input === "Hybrid" || input === "On-site" ? input : undefined;
-}
-
-function asEmploymentType(input?: string): EmploymentType | undefined {
-  return input === "Full Time" || input === "Part Time" || input === "Contract" || input === "Internship"
-    ? input
-    : undefined;
-}
-
-function asLevel(input?: string): Job["level"] | undefined {
-  return input === "Entry Level" || input === "Mid Level" || input === "Senior" ? input : undefined;
 }
 
 export default async function JobsPage({
@@ -28,6 +19,14 @@ export default async function JobsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const resolvedSearchParams = await searchParams;
+
+  // Map query params to database filters
+  const workModeParam = value(resolvedSearchParams.workMode);
+  const workModeVal = workModeParam ? parseWorkMode(workModeParam) : undefined;
+
+  const employmentTypeParam = value(resolvedSearchParams.employmentType);
+  const employmentTypeVal = employmentTypeParam ? parseEmploymentType(employmentTypeParam) : undefined;
+
   const filters: JobFilters = {
     keyword: value(resolvedSearchParams.keyword),
     company: value(resolvedSearchParams.company),
@@ -35,11 +34,16 @@ export default async function JobsPage({
     salary: value(resolvedSearchParams.salary),
     experience: value(resolvedSearchParams.experience),
     category: value(resolvedSearchParams.category),
-    workMode: asWorkMode(value(resolvedSearchParams.workMode)),
-    employmentType: asEmploymentType(value(resolvedSearchParams.employmentType)),
-    level: asLevel(value(resolvedSearchParams.level))
+    level: value(resolvedSearchParams.level),
+    workMode: workModeVal,
+    employmentType: employmentTypeVal,
   };
-  const jobs = listJobs(filters);
+
+  // Fetch jobs and categories in parallel from database services
+  const [jobs, categories] = await Promise.all([
+    jobService.listJobs(filters),
+    categoryService.listCategories()
+  ]);
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -51,7 +55,7 @@ export default async function JobsPage({
         </p>
       </div>
 
-      <SearchFilters defaults={resolvedSearchParams} />
+      <SearchFilters defaults={resolvedSearchParams} categories={categories} />
 
       <div className="mt-8 flex items-center justify-between">
         <p className="text-sm font-semibold text-ink/60">{jobs.length} matching jobs</p>

@@ -2,7 +2,13 @@ import { BarChart3, BriefcaseBusiness, Building2, Flag, Gauge, Layers3, Settings
 import { DashboardShell } from "@/components/DashboardShell";
 import { MetricCard } from "@/components/MetricCard";
 import { AdminWorkspace } from "@/components/AdminWorkspace";
-import { companies, getDashboardStats, jobs, users } from "@/lib/data";
+import { getSession } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import * as statsService from "@/lib/services/stats.service";
+import * as userService from "@/lib/services/user.service";
+import * as companyService from "@/lib/services/company.service";
+import type { SafeUser, Company, Job } from "@/lib/types";
 
 const navItems = [
   { label: "Dashboard", icon: Gauge },
@@ -15,8 +21,30 @@ const navItems = [
   { label: "Settings", icon: Settings }
 ];
 
-export default function AdminDashboardPage() {
-  const stats = getDashboardStats();
+export default async function AdminDashboardPage() {
+  const session = await getSession();
+  if (!session) redirect("/auth/login");
+  if (session.user.role !== "ADMIN") {
+    redirect(session.user.role === "EMPLOYER" ? "/dashboard/employer" : "/dashboard/job-seeker");
+  }
+
+  // Fetch all administration data in parallel from services and direct database queries
+  const [stats, allUsers, allCompanies, dbJobs] = await Promise.all([
+    statsService.getDashboardStats(),
+    userService.listUsers(),
+    companyService.listCompanies(),
+    prisma.job.findMany({
+      orderBy: { createdAt: "desc" }
+    })
+  ]);
+
+  // Cast dbJobs to Job[] type
+  const allJobs = dbJobs as unknown as Job[];
+
+  // Pending verification company count
+  const pendingVerification = allCompanies.filter((company) => !company.isVerified).length;
+  // Banned users count
+  const bannedUsersCount = allUsers.filter((user) => user.isBanned).length;
 
   return (
     <DashboardShell title="Admin Dashboard" subtitle="Users, employers, jobs, reports, analytics, and categories." navItems={navItems}>
@@ -36,9 +64,9 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {[
-              ["Fake job reports", "2 open"],
-              ["Company verification", `${companies.filter((company) => !company.isVerified).length} pending`],
-              ["Banned users", `${users.filter((user) => user.isBanned).length} users`]
+              ["Fake job reports", "0 open"],
+              ["Company verification", `${pendingVerification} pending`],
+              ["Banned users", `${bannedUsersCount} users`]
             ].map(([label, value]) => (
               <div key={label} className="rounded-lg border border-line bg-paper p-4">
                 <p className="text-sm font-semibold text-ink/60">{label}</p>
@@ -54,16 +82,20 @@ export default function AdminDashboardPage() {
           <MetricCard label="Hiring Rate" value={`${stats.hiringRate}%`} detail="Marketplace hiring rate." icon={Gauge} tone="saffron" />
         </section>
 
-        <AdminWorkspace initialUsers={users} initialCompanies={companies} initialJobs={jobs} />
+        <AdminWorkspace
+          initialUsers={allUsers as SafeUser[]}
+          initialCompanies={allCompanies as Company[]}
+          initialJobs={allJobs}
+        />
 
         <section id="settings" className="panel p-5">
           <h2 className="text-xl font-black text-ink">Settings</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <label className="flex items-center justify-between rounded-lg border border-line bg-paper p-4 text-sm font-semibold">
+            <label className="flex items-center justify-between rounded-lg border border-line bg-paper p-4 text-sm font-semibold cursor-pointer">
               Manual company verification
               <input type="checkbox" defaultChecked className="h-4 w-4" />
             </label>
-            <label className="flex items-center justify-between rounded-lg border border-line bg-paper p-4 text-sm font-semibold">
+            <label className="flex items-center justify-between rounded-lg border border-line bg-paper p-4 text-sm font-semibold cursor-pointer">
               Auto-hide flagged jobs
               <input type="checkbox" defaultChecked className="h-4 w-4" />
             </label>

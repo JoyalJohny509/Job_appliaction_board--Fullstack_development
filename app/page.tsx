@@ -11,7 +11,12 @@ import {
   Sparkles,
   UsersRound
 } from "lucide-react";
-import { categories, companies, getDashboardStats, listJobs } from "@/lib/data";
+
+export const dynamic = "force-dynamic";
+import * as statsService from "@/lib/services/stats.service";
+import * as jobService from "@/lib/services/job.service";
+import * as companyService from "@/lib/services/company.service";
+import * as categoryService from "@/lib/services/category.service";
 import { JobCard } from "@/components/JobCard";
 import { LogoBadge } from "@/components/LogoBadge";
 
@@ -33,10 +38,17 @@ const testimonials = [
   }
 ];
 
-export default function Home() {
-  const featuredJobs = listJobs().filter((job) => job.featured).slice(0, 3);
-  const latestJobs = listJobs().slice(0, 4);
-  const stats = getDashboardStats();
+export default async function Home() {
+  // Fetch all home page data in parallel from database services
+  const [stats, allJobs, companies, categories] = await Promise.all([
+    statsService.getDashboardStats(),
+    jobService.listJobs(),
+    companyService.listCompanies(),
+    categoryService.listCategories()
+  ]);
+
+  const featuredJobs = allJobs.filter((job) => job.featured).slice(0, 3);
+  const latestJobs = allJobs.slice(0, 4);
 
   return (
     <>
@@ -124,9 +136,13 @@ export default function Home() {
           </Link>
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
-          {featuredJobs.map((job) => (
-            <JobCard key={job.id} job={job} />
-          ))}
+          {featuredJobs.length === 0 ? (
+            <p className="text-sm text-ink/60 col-span-3 py-8 text-center">No featured jobs available.</p>
+          ) : (
+            featuredJobs.map((job) => (
+              <JobCard key={job.id} job={job} />
+            ))
+          )}
         </div>
       </section>
 
@@ -139,22 +155,28 @@ export default function Home() {
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {companies.map((company) => (
-              <article key={company.id} className="rounded-lg border border-line bg-paper p-5">
-                <div className="flex items-center gap-3">
-                  <LogoBadge label={company.logo} />
+            {companies.length === 0 ? (
+              <p className="text-sm text-ink/60 col-span-4 py-8 text-center">No companies registered yet.</p>
+            ) : (
+              companies.map((company) => (
+                <article key={company.id} className="rounded-lg border border-line bg-paper p-5 flex flex-col justify-between">
                   <div>
-                    <h3 className="font-black text-ink">{company.companyName}</h3>
-                    <p className="text-sm text-ink/60">{company.industry}</p>
+                    <div className="flex items-center gap-3">
+                      <LogoBadge label={company.logo || ""} />
+                      <div>
+                        <h3 className="font-black text-ink">{company.companyName}</h3>
+                        <p className="text-sm text-ink/60">{company.industry}</p>
+                      </div>
+                    </div>
+                    {company.description && <p className="mt-4 text-sm leading-6 text-ink/65">{company.description}</p>}
                   </div>
-                </div>
-                <p className="mt-4 text-sm leading-6 text-ink/65">{company.description}</p>
-                <p className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-mint">
-                  <BadgeCheck className="h-4 w-4" />
-                  {company.isVerified ? "Verified" : "Pending review"}
-                </p>
-              </article>
-            ))}
+                  <p className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-mint">
+                    <BadgeCheck className="h-4 w-4" />
+                    {company.isVerified ? "Verified" : "Pending review"}
+                  </p>
+                </article>
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -168,19 +190,23 @@ export default function Home() {
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          {categories.map((category) => (
-            <Link
-              key={category.id}
-              href={`/jobs?category=${encodeURIComponent(category.name)}`}
-              className="group flex items-center justify-between rounded-lg border border-line bg-white p-4 shadow-sm transition hover:border-mint"
-            >
-              <span>
-                <span className="font-black text-ink">{category.name}</span>
-                <span className="mt-1 block text-sm text-ink/60">{category.openJobs} open jobs</span>
-              </span>
-              <ArrowRight className="h-4 w-4 text-ink/40 transition group-hover:translate-x-1 group-hover:text-mint" />
-            </Link>
-          ))}
+          {categories.length === 0 ? (
+            <p className="text-sm text-ink/60 col-span-2 py-8 text-center">No categories available.</p>
+          ) : (
+            categories.map((category) => (
+              <Link
+                key={category.id}
+                href={`/jobs?category=${encodeURIComponent(category.name)}`}
+                className="group flex items-center justify-between rounded-lg border border-line bg-white p-4 shadow-sm transition hover:border-mint"
+              >
+                <span>
+                  <span className="font-black text-ink">{category.name}</span>
+                  <span className="mt-1 block text-sm text-ink/60">{category.openJobs} open jobs</span>
+                </span>
+                <ArrowRight className="h-4 w-4 text-ink/40 transition group-hover:translate-x-1 group-hover:text-mint" />
+              </Link>
+            ))
+          )}
         </div>
       </section>
 
@@ -193,9 +219,13 @@ export default function Home() {
             </div>
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
-            {latestJobs.map((job) => (
-              <JobCard key={job.id} job={job} />
-            ))}
+            {latestJobs.length === 0 ? (
+              <p className="text-sm text-ink/60 col-span-2 py-8 text-center">No jobs posted yet.</p>
+            ) : (
+              latestJobs.map((job) => (
+                <JobCard key={job.id} job={job} />
+              ))
+            )}
           </div>
         </div>
       </section>

@@ -39,11 +39,17 @@ export default async function JobsPage({
     employmentType: employmentTypeVal,
   };
 
-  // Fetch jobs and categories in parallel from database services
-  const [jobs, categories] = await Promise.all([
-    jobService.listJobs(filters),
-    categoryService.listCategories()
-  ]);
+  // Fetch jobs and categories in parallel — wrapped in try/catch for Vercel resilience
+  let jobs: Awaited<ReturnType<typeof jobService.listJobs>> = [];
+  let categories: Awaited<ReturnType<typeof categoryService.listCategories>> = [];
+  try {
+    [jobs, categories] = await Promise.all([
+      jobService.listJobs(filters),
+      categoryService.listCategories()
+    ]);
+  } catch (err) {
+    console.error("Failed to load jobs page data:", err);
+  }
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

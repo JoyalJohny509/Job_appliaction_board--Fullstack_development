@@ -45,11 +45,18 @@ export default async function JobSeekerDashboardPage() {
   const user = session.user;
 
   // Fetch real data from database services in parallel for performance
-  const [dbSavedJobs, dbApplications, dbNotifications] = await Promise.all([
-    savedJobService.getSavedJobs(user.id),
-    applicationService.listApplications({ userId: user.id }),
-    notificationService.listNotifications(user.id),
-  ]);
+  let dbSavedJobs: Awaited<ReturnType<typeof savedJobService.getSavedJobs>> = [];
+  let dbApplications: Awaited<ReturnType<typeof applicationService.listApplications>> = [];
+  let dbNotifications: Awaited<ReturnType<typeof notificationService.listNotifications>> = [];
+  try {
+    [dbSavedJobs, dbApplications, dbNotifications] = await Promise.all([
+      savedJobService.getSavedJobs(user.id),
+      applicationService.listApplications({ userId: user.id }),
+      notificationService.listNotifications(user.id),
+    ]);
+  } catch (err) {
+    console.error("Failed to load job-seeker dashboard data:", err);
+  }
 
   // Extract jobs from saved jobs wrapper
   const saved = dbSavedJobs.map((sj) => sj.job) as unknown as JobWithCompany[];

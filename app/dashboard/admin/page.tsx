@@ -28,15 +28,22 @@ export default async function AdminDashboardPage() {
     redirect(session.user.role === "EMPLOYER" ? "/dashboard/employer" : "/dashboard/job-seeker");
   }
 
-  // Fetch all administration data in parallel from services and direct database queries
-  const [stats, allUsers, allCompanies, dbJobs] = await Promise.all([
-    statsService.getDashboardStats(),
-    userService.listUsers(),
-    companyService.listCompanies(),
-    prisma.job.findMany({
-      orderBy: { createdAt: "desc" }
-    })
-  ]);
+  // Fetch all administration data \u2014 wrapped in try/catch for Vercel resilience
+  const fallbackStats = { totalUsers: 0, totalCompanies: 0, totalJobs: 0, openJobs: 0, applications: 0, dailyActiveUsers: 0, views: 0, acceptanceRate: 0, hiringRate: 0 };
+  let stats = fallbackStats;
+  let allUsers: Awaited<ReturnType<typeof userService.listUsers>> = [];
+  let allCompanies: Awaited<ReturnType<typeof companyService.listCompanies>> = [];
+  let dbJobs: Awaited<ReturnType<typeof prisma.job.findMany>> = [];
+  try {
+    [stats, allUsers, allCompanies, dbJobs] = await Promise.all([
+      statsService.getDashboardStats(),
+      userService.listUsers(),
+      companyService.listCompanies(),
+      prisma.job.findMany({ orderBy: { createdAt: "desc" } })
+    ]);
+  } catch (err) {
+    console.error("Failed to load admin dashboard data:", err);
+  }
 
   // Cast dbJobs to Job[] type
   const allJobs = dbJobs as unknown as Job[];

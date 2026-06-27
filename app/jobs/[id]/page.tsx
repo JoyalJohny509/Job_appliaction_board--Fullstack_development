@@ -12,7 +12,13 @@ export const dynamic = "force-dynamic";
 
 export default async function JobDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const job = await jobService.findJobById(id);
+
+  let job: Awaited<ReturnType<typeof jobService.findJobById>> = null;
+  try {
+    job = await jobService.findJobById(id);
+  } catch (err) {
+    console.error("Failed to load job details:", err);
+  }
 
   if (!job) {
     notFound();

@@ -31,7 +31,12 @@ export default async function EmployerDashboardPage() {
   const user = session.user;
   
   // Fetch company owned by this employer
-  const company = await companyService.findCompanyByOwnerId(user.id);
+  let company: Awaited<ReturnType<typeof companyService.findCompanyByOwnerId>> = null;
+  try {
+    company = await companyService.findCompanyByOwnerId(user.id);
+  } catch (err) {
+    console.error("Failed to load employer company:", err);
+  }
 
   // Handle case where employer does not have a company profile yet
   if (!company) {
@@ -61,43 +66,41 @@ export default async function EmployerDashboardPage() {
     );
   }
 
-  // Fetch jobs for this company
-  const companyJobs = await prisma.job.findMany({
-    where: { companyId: company.id },
-    orderBy: { createdAt: "desc" },
-  });
-
-  // Fetch applications for these jobs
-  const dbApplications = await prisma.application.findMany({
-    where: { jobId: { in: companyJobs.map((job) => job.id) } },
-    include: {
-      job: true,
-      user: true,
-    },
-    orderBy: { appliedAt: "desc" },
-  });
+  // Fetch jobs and applications — wrapped in try/catch for Vercel resilience
+  let companyJobs: Awaited<ReturnType<typeof prisma.job.findMany>> = [];
+  let dbApplications: Awaited<ReturnType<typeof prisma.application.findMany>> = [];
+  let stats = { totalUsers: 0, totalCompanies: 0, totalJobs: 0, openJobs: 0, applications: 0, dailyActiveUsers: 0, views: 0, acceptanceRate: 0, hiringRate: 28 };
+  try {
+    companyJobs = await prisma.job.findMany({
+      where: { companyId: company.id },
+      orderBy: { createdAt: "desc" },
+    });
+    dbApplications = await prisma.application.findMany({
+      where: { jobId: { in: companyJobs.map((job) => job.id) } },
+      include: { job: true, user: true },
+      orderBy: { appliedAt: "desc" },
+    });
+    stats = await statsService.getDashboardStats();
+  } catch (err) {
+    console.error("Failed to load employer dashboard data:", err);
+  }
 
   // Map database applications to SafeUser representation
-  const companyApplications = dbApplications.map((app) => {
+  const companyApplications = dbApplications.map((app: any) => {
     const { password, ...safeUser } = app.user;
-    return {
-      ...app,
-      user: safeUser
-    };
+    return { ...app, user: safeUser };
   });
 
-  // Extract unique applicant users to satisfy the users prop requirement
+  // Extract unique applicant users
   const uniqueUsers = Array.from(
     new Map(
-      dbApplications.map((app) => {
+      dbApplications.map((app: any) => {
         const { password, ...safeUser } = app.user;
         return [safeUser.id, safeUser];
       })
     ).values()
   ) as SafeUser[];
 
-  // Fetch global dashboard stats for benchmark
-  const stats = await statsService.getDashboardStats();
   const totalViews = companyJobs.reduce((total, job) => total + job.views, 0);
 
   return (

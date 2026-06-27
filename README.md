@@ -1,105 +1,107 @@
 # HirePath Job Board Application
 
-HirePath is a full-stack job board starter based on the project brief. It includes employer job posting, job seeker search and applications, saved jobs, resume validation, role dashboards, admin moderation screens, API routes, and a PostgreSQL-ready Prisma schema.
+## Overview
+HirePath is a full-stack job board application designed to connect job seekers, employers, and administrators. It includes employer job posting workflows, advanced job search and filtering for candidates, application tracking, resume validation, role-specific dashboards, and administrative moderation screens. The project is backed by a PostgreSQL database managed via Prisma ORM and deployed with a Next.js App Router frontend.
+
+---
 
 ## Features
+* **Job Seeker Dashboard**: Manage candidate profiles, upload resumes (validated up to 5MB for PDF and Word documents), view saved jobs, track active job applications, and receive notifications.
+* **Employer Dashboard**: Create and update verified company profiles, post new job listings, manage current job posts, review applicant profiles, and transition application statuses.
+* **Admin Dashboard**: Oversee platform users, verify employer accounts, moderate active job listings, view system analytics, and manage job categories.
+* **Job Search Engine**: Filter jobs by keyword, company name, location, salary range, category, work mode (Remote/Hybrid/Onsite), and employment type.
+* **Authentication Flow**: Safe, cookie-based authentication using JSON Web Tokens (JWT).
 
-- Job seeker registration and login demo flow
-- Employer registration with company profile creation
-- Home page with search, featured jobs, top companies, categories, latest jobs, testimonials, and footer
-- Job search by keyword, company, location, salary, category, work mode, employment type, and level
-- Job details page with company profile, salary, location, skills, responsibilities, benefits, and apply flow
-- Resume upload validation for PDF, DOC, and DOCX up to 5 MB
-- Job seeker dashboard for profile, resume, saved jobs, applied jobs, notifications, and settings
-- Employer dashboard for company profile, post job, manage jobs, applications, analytics, and settings
-- Admin dashboard for users, employers, jobs, reports, analytics, categories, and settings
-- Prisma schema for PostgreSQL production data modeling
+---
 
 ## Tech Stack
+* **Frontend**: Next.js App Router
+* **Styling**: Tailwind CSS
+* **Database ORM**: Prisma
+* **Database**: PostgreSQL (Supabase)
+* **Authentication**: JWT (implemented via `jose`)
+* **File Storage**: Cloudinary (for raw resume files)
 
-| Layer | Technology |
-| --- | --- |
-| Frontend | Next.js App Router |
-| UI | Tailwind CSS |
-| API | Next.js route handlers for the runnable starter |
-| Backend target | Express.js scaffold folder reserved for a separated API service |
-| Database target | PostgreSQL |
-| ORM | Prisma |
-| Auth target | JWT or Auth.js |
-| File storage target | Cloudinary or AWS S3 |
+---
 
-## Getting Started
-
-Install dependencies:
+## Installation
+To set up the project locally, install the dependencies first:
 
 ```bash
 npm install
 ```
 
-Run the app:
+---
 
-```bash
-npm run dev
+## Environment Variables
+Create a `.env` file in the root directory and define the following variables:
+
+```env
+# Database Connections
+DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres"
+
+# Authentication
+JWT_SECRET="your-secret-key-at-least-32-characters"
+JWT_EXPIRY="7d"
+
+# Cloudinary Storage
+CLOUDINARY_CLOUD_NAME="your-cloudinary-cloud-name"
+CLOUDINARY_API_KEY="your-cloudinary-api-key"
+CLOUDINARY_API_SECRET="your-cloudinary-api-secret"
 ```
 
-Open the local URL printed by Next.js, usually `http://localhost:3000`.
+---
 
-## Demo Accounts
+## Running the Project
 
-The in-memory demo store contains these accounts:
+1. **Synchronize the Database Schema**:
+   Push the Prisma schema to your Supabase PostgreSQL instance:
+   ```bash
+   npx prisma db push
+   ```
 
-| Role | Email | Password |
-| --- | --- | --- |
-| Job Seeker | `ava@example.com` | `password` |
-| Employer | `maya@novalabs.example` | `password` |
-| Admin | `admin@hirepath.example` | `password` |
+2. **Generate Prisma Client**:
+   Create the database client files:
+   ```bash
+   npx prisma generate
+   ```
 
-## Project Structure
+3. **Seed Database**:
+   Populate the database with initial categories, mock jobs, users, and companies:
+   ```bash
+   npx prisma db seed
+   ```
 
+4. **Start Development Server**:
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) (or the port specified in terminal) in your browser.
+
+---
+
+## Folder Structure
 ```text
-job-board/
-  app/                     Next.js routes, pages, dashboards, and API handlers
-  components/              Shared UI and client workflow components
-  hooks/                   Reserved for reusable React hooks
-  lib/                     Types, mock data, helpers, and domain mutations
-  prisma/                  PostgreSQL Prisma schema
-  backend/                 Reserved Express.js service structure
-  frontend/                Reserved split-frontend structure
-  database/                Reserved SQL, seed, and migration docs
-  uploads/                 Local upload placeholder for development
-  docs/                    API and architecture notes
+job-board-application/
+├── app/                  # Next.js pages, dashboards, and API route handlers
+├── components/           # Shared UI and workflow components
+├── hooks/                # Reusable React hooks
+├── lib/                  # Service layers, helpers, and type definitions
+│   └── services/         # Database interaction services
+├── prisma/               # Schema definitions and database seed scripts
+├── public/               # Static assets
+└── styles/               # Global styling configurations
 ```
 
-## API Endpoints
+---
 
-Implemented route handlers:
+## Screenshots
+Screenshots demonstrating the landing page and candidate dashboards can be found within the repository or in the walkthrough documentation.
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/logout`
-- `GET /api/auth/me`
-- `GET /api/jobs`
-- `GET /api/jobs/:id`
-- `POST /api/jobs`
-- `PUT /api/jobs/:id`
-- `DELETE /api/jobs/:id`
-- `POST /api/applications`
-- `GET /api/applications`
-- `PUT /api/applications/:id/status`
-- `GET /api/companies`
-- `POST /api/companies`
-- `PUT /api/companies/:id`
-- `GET /api/users`
-- `GET /api/users/profile`
-- `PUT /api/users/profile`
+---
 
-## Production Notes
-
-The current app uses `lib/data.ts` as a local in-memory store so the UI is easy to run and inspect. To make it production-ready:
-
-1. Add `DATABASE_URL` for PostgreSQL.
-2. Run `npm run prisma:generate`.
-3. Replace `lib/data.ts` mutations with Prisma queries.
-4. Add JWT or Auth.js sessions and route protection.
-5. Replace resume filename storage with Cloudinary or AWS S3 uploads.
-6. Split `backend/` into an Express API if deploying frontend and backend separately.
+## Future Improvements
+* **AWS S3 Storage Integration**: Transition resume storage option to AWS S3.
+* **Email Notifications**: Set up transactional email dispatching for application status updates.
+* **Separate Express Backend**: Scaffold the reserve `backend/` folder into a separated microservice API if deploying the backend independently from the Next.js runtime.

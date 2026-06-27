@@ -38,14 +38,26 @@ const testimonials = [
   }
 ];
 
+const fallbackStats = { totalUsers: 0, totalCompanies: 0, totalJobs: 0, openJobs: 0, applications: 0, dailyActiveUsers: 0, views: 0, acceptanceRate: 0, hiringRate: 0 };
+
 export default async function Home() {
   // Fetch all home page data in parallel from database services
-  const [stats, allJobs, companies, categories] = await Promise.all([
-    statsService.getDashboardStats(),
-    jobService.listJobs(),
-    companyService.listCompanies(),
-    categoryService.listCategories()
-  ]);
+  // Wrapped in try/catch so the page renders even if DB is unreachable
+  let stats = fallbackStats;
+  let allJobs: Awaited<ReturnType<typeof jobService.listJobs>> = [];
+  let companies: Awaited<ReturnType<typeof companyService.listCompanies>> = [];
+  let categories: Awaited<ReturnType<typeof categoryService.listCategories>> = [];
+
+  try {
+    [stats, allJobs, companies, categories] = await Promise.all([
+      statsService.getDashboardStats(),
+      jobService.listJobs(),
+      companyService.listCompanies(),
+      categoryService.listCategories()
+    ]);
+  } catch (err) {
+    console.error("Failed to load home page data:", err);
+  }
 
   const featuredJobs = allJobs.filter((job) => job.featured).slice(0, 3);
   const latestJobs = allJobs.slice(0, 4);
